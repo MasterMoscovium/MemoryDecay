@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Maze RL Dashboard - Client Sandbox</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- MathJax for rendering formulas -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="glass-container">
+        <header>
+            <div class="header-left">
+                <h1>AI Maze Solver Sandbox</h1>
+                <p>Client-Side Interactive Path Planning & Reinforcement Learning in a Dynamic Grid</p>
+            </div>
+            <div class="header-actions">
+                <button id="trainBtn" class="btn primary">⚡ Train Agent</button>
+                <button id="resetBtn" class="btn secondary">🔄 Reset Sandbox</button>
+                <button id="shutdownBtn" class="btn danger">🔌 Shutdown Server</button>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Left Sidebar Controls -->
+            <aside class="sidebar">
+                <!-- Hyperparameters card -->
+                <div class="card">
+                    <div class="card-title">⚙️ Hyperparameters</div>
+                    <div class="control-group">
+                        <div class="slider-wrapper">
+                            <div class="slider-header" title="Learning Rate controls how much the agent updates its memory on each step.">
+                                <span>Learning Rate (&alpha;) ℹ️</span>
+                                <span id="lrVal" class="val">0.1</span>
+                            </div>
+                            <input type="range" id="lrSlider" min="0.01" max="1.0" step="0.01" value="0.1">
+                        </div>
+
+                        <div class="slider-wrapper">
+                            <div class="slider-header" title="Discount Factor determines the importance of future rewards vs immediate rewards.">
+                                <span>Discount Factor (&gamma;) ℹ️</span>
+                                <span id="gammaVal" class="val">0.9</span>
+                            </div>
+                            <input type="range" id="gammaSlider" min="0.1" max="0.99" step="0.01" value="0.9">
+                        </div>
+
+                        <div class="slider-wrapper">
+                            <div class="slider-header" title="Number of training episodes run instantly to prepare the perfect base agent before memory wipe.">
+                                <span>Base Training Episodes ℹ️</span>
+                                <span id="episodesVal" class="val">2500</span>
+                            </div>
+                            <input type="range" id="episodesSlider" min="100" max="5000" step="100" value="2500">
+                        </div>
+
+                        <div class="slider-wrapper">
+                            <div class="slider-header" title="Delay (in ms) between each visual step of the simulation. First 2 iterations will run slower (2x delay).">
+                                <span>Sim Step Delay ℹ️</span>
+                                <span id="speedVal" class="val">150ms</span>
+                            </div>
+                            <input type="range" id="speedSlider" min="25" max="1000" step="25" value="150">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sandbox Mode card -->
+                <div class="card">
+                    <div class="card-title">🛠️ Click Action Mode</div>
+                    <div class="radio-tile-group">
+                        <label class="radio-tile">
+                            <input type="radio" name="clickMode" value="dynamic" checked>
+                            <span class="title">Toggle Dynamic Obstacle</span>
+                            <span class="desc">🟥 Red</span>
+                        </label>
+                        <label class="radio-tile">
+                            <input type="radio" name="clickMode" value="wall">
+                            <span class="title">Toggle Static Wall</span>
+                            <span class="desc">🟦 Blue</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Legend Card -->
+                <div class="card">
+                    <div class="card-title">📖 Maze Legend</div>
+                    <div class="legend-grid">
+                        <div class="legend-item">
+                            <div class="legend-color wall"></div>
+                            <span>Wall</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color path"></div>
+                            <span>Path</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color obstacle"></div>
+                            <span>Dynamic Obstacle</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color start"></div>
+                            <span>Start Pos</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color target"></div>
+                            <span>Target</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Panels -->
+            <main class="main-content">
+                <!-- Navigation Tabs -->
+                <div class="tabs-nav">
+                    <button class="tab-btn active" data-tab="vizTab">🔍 Live Simulation</button>
+                    <button class="tab-btn" data-tab="policyTab">🧭 Policy View Sandbox</button>
+                    <button class="tab-btn" data-tab="metricsTab">📈 Performance Charts</button>
+                    <button class="tab-btn" data-tab="formulasTab">🧮 Math Formulas</button>
+                </div>
+
+                <!-- Live Simulation Content Tab -->
+                <div id="vizTab" class="tab-content active">
+                    <div class="viz-layout">
+                        <!-- Maze visualizer -->
+                        <div class="card maze-card">
+                            <div class="card-title" id="simTitle">Live Simulation: No Decay Agent</div>
+                            <div class="maze-wrapper">
+                                <div class="collision-flash" id="collisionFlash"></div>
+                                <div class="maze-grid" id="maze"></div>
+                            </div>
+                            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                                <button id="playBtn" class="btn primary" disabled>▶ Run Simulation</button>
+                                <button id="pauseBtn" class="btn secondary" disabled>⏸ Pause</button>
+                            </div>
+                        </div>
+
+                        <!-- Metric Box & Console -->
+                        <div class="info-sidebar">
+                            <div class="metrics-row">
+                                <div class="metric-box">
+                                    <span class="lbl">Agent Decay</span>
+                                    <span id="metricDecay" class="val accent">-</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="lbl">Iteration</span>
+                                    <span id="metricIteration" class="val success">-</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="lbl">Current Step</span>
+                                    <span id="metricStep" class="val">-</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="lbl">Reward</span>
+                                    <span id="metricReward" class="val">-</span>
+                                </div>
+                            </div>
+
+                            <div class="card console-card">
+                                <div class="card-title">📜 Agent Logs</div>
+                                <div class="console-output" id="consoleLog">
+                                    <p class="system">Welcome! Set parameters and click "Train Agent" to start.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Policy View Content Tab -->
+                <div id="policyTab" class="tab-content">
+                    <div class="viz-layout">
+                        <!-- Maze visualizer -->
+                        <div class="card maze-card">
+                            <div class="card-title">Q-Table Policy Heatmap</div>
+                            <div class="sandbox-hud">Interactive Editor</div>
+                            <div class="maze-wrapper">
+                                <div class="maze-grid" id="policyMaze"></div>
+                            </div>
+                            <div style="margin-top: 15px; text-align: center; max-width: 400px;">
+                                <p style="font-size: 0.8rem; color: var(--text-muted);">
+                                    Click any cell on the grid to add/remove obstacles. Value iteration runs instantly, showing policy shifts (▲ ▶ ▼ ◀) in real time!
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Policy Info Panel -->
+                        <div class="info-sidebar">
+                            <div class="card" style="flex-grow: 1;">
+                                <div class="card-title">💡 How Policy Sandbox Works</div>
+                                <p style="font-size: 0.85rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px;">
+                                    When you place or toggle an obstacle on the maze grid, the simulator runs <strong>Value Iteration</strong> instantly in the browser.
+                                </p>
+                                <p style="font-size: 0.85rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px;">
+                                    The arrows represent the highest Q-value action for each cell (▲=Up, ▶=Right, ▼=Down, ◀=Left).
+                                </p>
+                                <p style="font-size: 0.85rem; line-height: 1.6; color: var(--text-muted);">
+                                    Try placing a wall or obstacle directly in the current path. Notice how the arrows dynamically redirect the agent around the block immediately!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Chart Content Tab -->
+                <div id="metricsTab" class="tab-content">
+                    <div class="card chart-card" style="margin-bottom: 20px;">
+                        <div class="card-title">📈 100-Iteration Memory Wipe Decay Comparison</div>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                            Shows total rewards accumulated as memory is progressively wiped over 100 evaluation runs. Higher is better.
+                        </p>
+                        <div class="chart-wrapper">
+                            <canvas id="metricsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card chart-card">
+                        <div class="card-title">🚀 5000-Iteration Long-Term Adaptability Analysis</div>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                            <strong>Why No Decay Fails:</strong> In a highly dynamic environment where obstacles frequently appear and disappear, an agent with "No Decay" retains old, stale Q-values of obstacles that no longer exist. It becomes rigidly afraid of empty spaces and gets stuck.
+                            <br><br>
+                            Meanwhile, <strong>Exponential and Cosine Decay</strong> continuously forget a fraction of their memory, enabling them to naturally clear out stale fears and rapidly relearn the newly opened optimal paths. This 5000-iteration graph proves that controlled decay yields superior long-term cumulative rewards!
+                        </p>
+                        <div class="chart-wrapper">
+                            <canvas id="longTermChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulas Tab -->
+                <div id="formulasTab" class="tab-content">
+                    <div class="card">
+                        <div class="card-title">🧮 Memory Wipe Strategy Formulas</div>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 25px;">
+                            During evaluation, the agent's memory (Q-Table) is subjected to partial wipes to simulate cognitive decay over iterations \( t \) (where \( t \) goes from 0 to \( T_{max} \)). The fraction of memory wiped, \( f(t) \), is dictated by the selected mathematical function:
+                        </p>
+
+                        <div class="formula-grid">
+                            <div class="formula-box">
+                                <h3>No Decay</h3>
+                                <p>Memory is perfectly retained forever. Great for static environments, but terrible for dynamic ones due to stale knowledge retention.</p>
+                                <div class="math-render">
+                                    \( f(t) = 0 \)
+                                </div>
+                            </div>
+
+                            <div class="formula-box">
+                                <h3>Linear Decay</h3>
+                                <p>Memory wipe fraction increases linearly. Can lead to sudden catastrophic forgetting near the end of the iterations.</p>
+                                <div class="math-render">
+                                    \( f(t) = \frac{t}{T_{max}} \)
+                                </div>
+                            </div>
+
+                            <div class="formula-box">
+                                <h3>Exponential Decay</h3>
+                                <p>Quickly begins forgetting but slows down, maintaining a balanced continuous plasticity. Excellent for dynamic adaptability.</p>
+                                <div class="math-render">
+                                    \( f(t) = 1 - e^{-2 \cdot \frac{t}{T_{max}}} \)
+                                </div>
+                            </div>
+
+                            <div class="formula-box">
+                                <h3>Cosine Decay</h3>
+                                <p>Smooth, S-curve style forgetting. Starts slow, accelerates in the middle, and tapers off. Very organic.</p>
+                                <div class="math-render">
+                                    \( f(t) = \frac{1}{2} \left[ 1 - \cos\left( \pi \cdot \frac{t}{T_{max}} \right) \right] \)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
