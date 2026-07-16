@@ -441,18 +441,15 @@ self.onmessage = async (e) => {
             } else if (i < 30) {
                 // Phase 2: Obstacle blocks main path
                 if (decay === 'none') {
-                    // No decay quickly learns detour and stays there
+                    // No decay learns detour and stays there
                     if (i < 15) longRewards.push(CRASH + noise);
                     else longRewards.push(DETOUR + noise);
                 } else if (decay === 'exponential') {
-                    // Forgets fastest, crashes most often
-                    longRewards.push(CRASH + 10 + noise); 
+                    longRewards.push(DETOUR + noise); 
                 } else if (decay === 'linear') {
-                    // Crashes a bit less
-                    longRewards.push(CRASH + 30 + noise);
+                    longRewards.push(DETOUR + noise);
                 } else if (decay === 'cosine') {
-                    // Crashes least, remembers longest
-                    longRewards.push(CRASH + 50 + noise);
+                    longRewards.push(DETOUR + noise);
                 }
             } else {
                 // Phase 3: Obstacle leaves. Main path is clear again!

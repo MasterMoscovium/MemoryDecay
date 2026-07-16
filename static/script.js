@@ -389,24 +389,53 @@ document.addEventListener('DOMContentLoaded', () => {
     let globalBaseAgent = null;
     let simulations = {};
     
-    // Procedurally generated rich metrics for presentation
+    function smoothData(data, windowSize) {
+        let smoothed = [];
+        for (let i = 0; i < data.length; i++) {
+            let start = Math.max(0, i - windowSize + 1);
+            let end = i + 1;
+            let window = data.slice(start, end);
+            let sum = window.reduce((a, b) => a + b, 0);
+            smoothed.push(sum / window.length);
+        }
+        return smoothed;
+    }
+
     function generateMockData(type, length) {
+        let decay = type.split('_')[1];
+        const OPTIMAL = 155;
+        const DETOUR = 85;
+        const CRASH = -20;
+        
         let arr = [];
         for(let i=0; i<length; i++) {
-            let t = i / length;
-            let val = 0;
-            if(type === 'metrics_none') val = 80 - 15*t + (Math.random()*5-2.5);
-            if(type === 'metrics_linear') val = 80 - 110*(t*t) + (Math.random()*5-2.5);
-            if(type === 'metrics_exponential') val = 70 + 10*Math.exp(-5*t) + (Math.random()*5-2.5);
-            if(type === 'metrics_cosine') val = 65 + 15*Math.cos(Math.PI*t) + (Math.random()*5-2.5);
+            let noise = (Math.random() * 6 - 3);
             
-            if(type === 'long_none') val = 80 - 140*Math.sqrt(t) + (Math.random()*8-4);
-            if(type === 'long_linear') val = 80 - 30*t - 150*Math.pow(t, 8) + (Math.random()*8-4);
-            if(type === 'long_exponential') val = 75 + 5*Math.exp(-10*t) + (Math.random()*6-3);
-            if(type === 'long_cosine') val = 60 + 20*Math.cos(Math.PI*1.5*t) + (Math.random()*6-3);
-            arr.push(val);
+            if (i < 12) {
+                arr.push(OPTIMAL + noise);
+            } else if (i < 30) {
+                if (decay === 'none') {
+                    if (i < 15) arr.push(CRASH + noise);
+                    else arr.push(DETOUR + noise);
+                } else {
+                    arr.push(DETOUR + noise);
+                }
+            } else {
+                if (decay === 'none') {
+                    arr.push(DETOUR + noise);
+                } else if (decay === 'exponential') {
+                    if (i < 35) arr.push(DETOUR + (i - 30) * 15 + noise);
+                    else arr.push(OPTIMAL + noise);
+                } else if (decay === 'linear') {
+                    if (i < 45) arr.push(DETOUR + (i - 30) * 4.6 + noise);
+                    else arr.push(OPTIMAL + noise);
+                } else if (decay === 'cosine') {
+                    if (i < 65) arr.push(DETOUR + (i - 30) * 2 + noise);
+                    else arr.push(OPTIMAL + noise);
+                }
+            }
         }
-        return arr;
+        return smoothData(arr, 5);
     }
     
     let metricsData = {
