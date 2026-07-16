@@ -427,22 +427,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     arr.push(OPTIMAL + noise);
                 } else if (i < 30) {
                     if (decay === 'none') {
-                        if (i < 15) arr.push(CRASH + noise);
-                        else arr.push(DETOUR + noise);
-                    } else {
                         arr.push(DETOUR + noise);
+                    } else if (decay === 'exponential') {
+                        arr.push(-10 + noise);
+                    } else if (decay === 'linear') {
+                        arr.push(10 + noise);
+                    } else if (decay === 'cosine') {
+                        arr.push(30 + noise);
                     }
                 } else {
                     if (decay === 'none') {
                         arr.push(DETOUR + noise);
                     } else if (decay === 'exponential') {
-                        if (i < 35) arr.push(DETOUR + (i - 30) * 15 + noise);
+                        if (i < 35) arr.push(-10 + (i - 30) * 33 + noise); // 33 * 5 = 165, reaches 155
                         else arr.push(OPTIMAL + noise);
                     } else if (decay === 'linear') {
-                        if (i < 45) arr.push(DETOUR + (i - 30) * 4.6 + noise);
+                        if (i < 45) arr.push(10 + (i - 30) * 9.6 + noise); // 9.6 * 15 = 144, reaches 154
                         else arr.push(OPTIMAL + noise);
                     } else if (decay === 'cosine') {
-                        if (i < 65) arr.push(DETOUR + (i - 30) * 2 + noise);
+                        if (i < 65) arr.push(30 + (i - 30) * 3.5 + noise); // 3.5 * 35 = 122.5, reaches 152.5
                         else arr.push(OPTIMAL + noise);
                     }
                 }
