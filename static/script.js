@@ -403,35 +403,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateMockData(type, length) {
         let decay = type.split('_')[1];
-        const OPTIMAL = 155;
-        const DETOUR = 85;
-        const CRASH = -20;
-        
         let arr = [];
-        for(let i=0; i<length; i++) {
-            let noise = (Math.random() * 6 - 3);
+        
+        if (type.startsWith('metrics_')) {
+            for(let i=0; i<length; i++) {
+                let t = i / length;
+                let val = 0;
+                if(decay === 'none') val = 80 - 15*t + (Math.random()*5-2.5);
+                if(decay === 'linear') val = 80 - 110*(t*t) + (Math.random()*5-2.5);
+                if(decay === 'exponential') val = 70 + 10*Math.exp(-5*t) + (Math.random()*5-2.5);
+                if(decay === 'cosine') val = 65 + 15*Math.cos(Math.PI*t) + (Math.random()*5-2.5);
+                arr.push(val);
+            }
+        } else {
+            const OPTIMAL = 155;
+            const DETOUR = 85;
+            const CRASH = -20;
             
-            if (i < 12) {
-                arr.push(OPTIMAL + noise);
-            } else if (i < 30) {
-                if (decay === 'none') {
-                    if (i < 15) arr.push(CRASH + noise);
-                    else arr.push(DETOUR + noise);
+            for(let i=0; i<length; i++) {
+                let noise = (Math.random() * 6 - 3);
+                
+                if (i < 12) {
+                    arr.push(OPTIMAL + noise);
+                } else if (i < 30) {
+                    if (decay === 'none') {
+                        if (i < 15) arr.push(CRASH + noise);
+                        else arr.push(DETOUR + noise);
+                    } else {
+                        arr.push(DETOUR + noise);
+                    }
                 } else {
-                    arr.push(DETOUR + noise);
-                }
-            } else {
-                if (decay === 'none') {
-                    arr.push(DETOUR + noise);
-                } else if (decay === 'exponential') {
-                    if (i < 35) arr.push(DETOUR + (i - 30) * 15 + noise);
-                    else arr.push(OPTIMAL + noise);
-                } else if (decay === 'linear') {
-                    if (i < 45) arr.push(DETOUR + (i - 30) * 4.6 + noise);
-                    else arr.push(OPTIMAL + noise);
-                } else if (decay === 'cosine') {
-                    if (i < 65) arr.push(DETOUR + (i - 30) * 2 + noise);
-                    else arr.push(OPTIMAL + noise);
+                    if (decay === 'none') {
+                        arr.push(DETOUR + noise);
+                    } else if (decay === 'exponential') {
+                        if (i < 35) arr.push(DETOUR + (i - 30) * 15 + noise);
+                        else arr.push(OPTIMAL + noise);
+                    } else if (decay === 'linear') {
+                        if (i < 45) arr.push(DETOUR + (i - 30) * 4.6 + noise);
+                        else arr.push(OPTIMAL + noise);
+                    } else if (decay === 'cosine') {
+                        if (i < 65) arr.push(DETOUR + (i - 30) * 2 + noise);
+                        else arr.push(OPTIMAL + noise);
+                    }
                 }
             }
         }
@@ -498,9 +511,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 metricsData = metrics.metricsData;
                 longTermMetricsData = metrics.longTermMetricsData;
                 
-                // Re-render charts
-                renderChart(metricsData, 'metricsChart');
-                renderChart(longTermMetricsData, 'longTermChart');
+                // Re-render charts omitted to hardcode the performance charts as requested
+                // renderChart(metricsData, 'metricsChart');
+                // renderChart(longTermMetricsData, 'longTermChart');
                 
                 const endTrain = performance.now();
                 log(`Base agent training and multi-agent evaluations completed in ${(endTrain - startTrain).toFixed(2)}ms.`, "success");
